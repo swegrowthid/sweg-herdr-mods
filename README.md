@@ -415,7 +415,9 @@ herdr-mods/
 
 ### Mods in this repository
 
-_None yet. Add the first one using the layout above._
+| Mod | What it does |
+| --- | --- |
+| [new-workspace](new-workspace/) | A native folder dialog for new spaces. Pick a folder; the new space's terminal starts there. |
 
 ---
 
