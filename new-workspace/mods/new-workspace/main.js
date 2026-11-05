@@ -8,7 +8,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { closeOverlay, exec, home, props, run, setShared, shared, spaces, theme, window } from "herdr";
+import { closeOverlay, exec, home, props, run, setShared, settings, shared, spaces, theme, window } from "herdr";
 import { crumbs, nameOf, normalize, parentOf, parseListing, places, recents, remember } from "./logic.js";
 
 const LAST = "new-workspace.last";
@@ -209,15 +209,21 @@ export default class NewWorkspace extends View {
     else if (top + ROW > this.scroll + viewH) this.scroll = top + ROW - viewH;
     const thumb = Math.max(24, (viewH * viewH) / total);
     const thumbTop = maxScroll > 0 ? (viewH - thumb) * (this.scroll / maxScroll) : 0;
-    return v_flex().relative().flex_1().min_h(0).overflow_hidden()
+    return v_flex().id("nw-list").relative().flex_1().min_h(0).overflow_hidden()
       .on_size_change((size, cx) => {
-        if (Math.abs(this.viewH - size.height) > 1) {
-          this.viewH = size.height;
+        const h = size.height / (settings().zoom || 1);
+        if (Math.abs(this.viewH - h) > 1) {
+          this.viewH = h;
           cx.notify();
         }
       })
       .on_scroll_wheel((event, cx) => {
         this.scroll = Math.max(0, Math.min(this.scroll - event.delta.y, maxScroll));
+        // Render keeps `at` visible, so the wheel moves it into the new
+        // window too; left behind, the next frame scrolls back to it.
+        const first = Math.ceil(this.scroll / ROW);
+        const last = Math.min(this.entries.length - 1, Math.ceil((this.scroll + viewH) / ROW) - 1);
+        this.at = Math.min(Math.max(this.at, first), Math.max(first, last));
         cx.notify();
       })
       .children(this.entries.map((name, i) =>
