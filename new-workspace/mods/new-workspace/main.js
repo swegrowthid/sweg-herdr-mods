@@ -53,37 +53,44 @@ export default class NewWorkspace extends View {
     if (overlay) closeOverlay(overlay);
   }
 
-  async load(path, cx, retry = false) {
+  // A cx lives for one dispatch only (gpui-kit Context docs). The sync part
+  // runs on the caller's live cx; the part after `await` runs on spawn's
+  // AsyncContext. Handing a render's cx to a click handler throws
+  // stale-context and the click silently does nothing.
+  load(path, cx, retry = false) {
     const seq = ++this.seq;
     this.loading = true;
     this.note = null;
     cx.notify();
-    let result;
-    try {
-      result = await exec("/bin/sh", ["-c", LIST, "sh", path]);
-    } catch {
-      result = { code: 1, stdout: "" };
-    }
-    if (!this.alive || seq !== this.seq) return;
-    if (result.code !== 0) {
-      if (retry) return this.load(home(), cx);
+    cx.spawn(async (cx) => {
+      let result;
+      try {
+        result = await exec("/bin/sh", ["-c", LIST, "sh", path]);
+      } catch {
+        result = { code: 1, stdout: "" };
+      }
+      if (!this.alive || seq !== this.seq) return;
+      if (result.code !== 0) {
+        if (retry) return this.load(home(), cx);
+        this.loading = false;
+        this.note = "Cannot open that folder.";
+        cx.notify();
+        return;
+      }
+      const listing = parseListing(result.stdout);
+      this.writable = listing.writable;
+      this.entries = listing.entries;
+      this.cwd = path;
+      this.at = 0;
       this.loading = false;
-      this.note = "Cannot open that folder.";
+      this.scroll = 0;
       cx.notify();
-      return;
-    }
-    const listing = parseListing(result.stdout);
-    this.writable = listing.writable;
-    this.entries = listing.entries;
-    this.cwd = path;
-    this.at = 0;
-    this.loading = false;
-    this.scroll = 0;
-    cx.notify();
+    });
   }
 
   enter(name, cx) {
-    this.load(this.cwd + "/" + name, cx);
+    const base = this.cwd === "/" ? "" : this.cwd;
+    this.load(base + "/" + name, cx);
   }
 
   up(cx) {
@@ -91,7 +98,7 @@ export default class NewWorkspace extends View {
     if (parent) this.load(parent, cx);
   }
 
-  open(cx) {
+  open() {
     if (!this.writable || this.loading) return;
     const folder = this.cwd;
     const list = remember(folder, shared(RECENTS));
@@ -119,7 +126,7 @@ export default class NewWorkspace extends View {
     } else if (key === "backspace") {
       this.up(cx);
     } else if (key === "enter") {
-      if (mod || !this.entries[this.at]) this.open(cx);
+      if (mod || !this.entries[this.at]) this.open();
       else this.enter(this.entries[this.at], cx);
     } else {
       return;
@@ -138,27 +145,27 @@ export default class NewWorkspace extends View {
     return div().px(9).pt(2).pb(4).text_size(9).font_semibold().text_color(t.dim).child(label);
   }
 
-  sideRow(t, id, target, icon, label, current, cx) {
+  sideRow(t, id, target, icon, label, current) {
     const on = current === target;
     return h_flex().id(id).h(27).flex_none().px(8).gap(8).items_center().rounded(6)
       .when(on, (el) => el.bg(t.selected))
       .hover((s) => s.bg(t.hover))
-      .on_click(() => this.load(target, cx))
+      .on_click((_e, cx) => this.load(target, cx))
       .child(svg(icon).size(12).flex_none().text_color(on ? t.foreground : t.muted))
       .child(div().flex_1().min_w(0).truncate().text_size(11.5).text_color(on ? t.foreground : t.muted).child(label));
   }
 
-  sidebar(t, cx) {
+  sidebar(t) {
     const current = this.cwd;
     const rows = [this.section(t, "PLACES")];
-    places(home()).forEach((p, i) => rows.push(this.sideRow(t, `nw-place-${i}`, p.path, p.icon, p.name, current, cx)));
+    places(home()).forEach((p, i) => rows.push(this.sideRow(t, `nw-place-${i}`, p.path, p.icon, p.name, current)));
     rows.push(div().h(1).mx(8).my(6).flex_none().bg(t.border));
     rows.push(this.section(t, "RECENT"));
     const recent = recents(shared(RECENTS), spaces(), home()).filter((p) => p !== current);
     if (recent.length === 0) {
       rows.push(div().px(9).py(3).text_size(10.5).text_color(t.dim).child("Nothing yet"));
     }
-    recent.forEach((p, i) => rows.push(this.sideRow(t, `nw-recent-${i}`, p, "mods/workspace-chrome/clock.svg", nameOf(p), current, cx)));
+    recent.forEach((p, i) => rows.push(this.sideRow(t, `nw-recent-${i}`, p, "mods/workspace-chrome/clock.svg", nameOf(p), current)));
     return v_flex().w(152).flex_none().h_full().bg(t.chrome).pt(8).pb(8)
       .child(v_flex().flex_1().min_h(0).children(rows))
       .child(div().px(10).pt(7).border_t(1).border_color(t.border).text_size(9).line_height("13px").text_color(t.dim)
@@ -176,17 +183,17 @@ export default class NewWorkspace extends View {
       .hover((s) => s.bg(t.hover).text_color(t.foreground)).on_click(onclick).child(label);
   }
 
-  row(t, index, name, cx) {
+  row(t, index, name) {
     const on = index === this.at;
     return h_flex().id(`nw-row-${name}`).h(ROW).px(8).gap(9).items_center().rounded(6)
       .when(on, (el) => el.bg(t.selected))
       .hover((s) => s.bg(t.hover))
-      .on_click(() => this.enter(name, cx))
+      .on_click((_e, cx) => this.enter(name, cx))
       .child(svg("mods/files/folder.svg").size(14).flex_none().text_color(on ? t.foreground : t.muted))
       .child(div().flex_1().min_w(0).truncate().text_size(12.5).text_color(t.foreground).child(name));
   }
 
-  listView(t, cx) {
+  listView(t) {
     if (this.loading) return this.empty(t, "Reading…", null);
     if (this.entries.length === 0) {
       return this.writable
@@ -214,7 +221,7 @@ export default class NewWorkspace extends View {
         cx.notify();
       })
       .children(this.entries.map((name, i) =>
-        div().absolute().left(0).right(0).top(i * ROW - this.scroll).h(ROW).child(this.row(t, i, name, cx))))
+        div().absolute().left(0).right(0).top(i * ROW - this.scroll).h(ROW).child(this.row(t, i, name))))
       .when(maxScroll > 0, (el) => el.child(div().absolute().right(3).top(thumbTop).w(3).h(thumb).rounded(2).bg(t.border)));
   }
 
@@ -224,7 +231,7 @@ export default class NewWorkspace extends View {
       .when(Boolean(detail), (el) => el.child(div().text_size(10).text_color(t.dim).child(detail)));
   }
 
-  render(cx) {
+  render() {
     const t = theme();
     const mac = window()?.platform === "macos";
     const path = this.cwd ?? home();
@@ -238,24 +245,24 @@ export default class NewWorkspace extends View {
       .child(h_flex().id("nw-up").size(26).flex_none().items_center().justify_center().rounded(6)
         .text_size(13).text_color(t.muted).cursor_pointer()
         .hover((s) => s.bg(t.hover).text_color(t.foreground))
-        .on_click(() => this.up(cx)).child("↑"))
+        .on_click((_e, cx) => this.up(cx)).child("↑"))
       .child(h_flex().flex_1().min_w(0).gap(1).items_center().overflow_hidden()
         .children(crumbs(path, home()).flatMap((c, i, all) => [
           i && all[i - 1].name !== "/" ? div().flex_none().text_size(10).text_color(t.dim).child("/") : null,
           div().id(`nw-crumb-${i}`).px(5).py(3).rounded(4).flex_none().text_size(11)
             .text_color(c.path === path ? t.foreground : t.muted)
             .when(c.path !== path, (el) => el.cursor_pointer().hover((s) => s.bg(t.hover).text_color(t.foreground)))
-            .on_click(() => this.load(c.path, cx))
+            .on_click((_e, cx) => this.load(c.path, cx))
             .child(c.name),
         ]).filter(Boolean)));
     const body = h_flex().flex_1().min_h(0)
-      .child(this.sidebar(t, cx))
+      .child(this.sidebar(t))
       .child(div().w(1).flex_none().h_full().bg(t.border))
-      .child(v_flex().flex_1().min_w(0).min_h(0).h_full().p(6).child(this.listView(t, cx)));
+      .child(v_flex().flex_1().min_w(0).min_h(0).h_full().p(6).child(this.listView(t)));
     const footer = h_flex().h(52).flex_none().px(14).gap(8).items_center().border_t(1).border_color(t.border)
       .child(div().flex_1().text_size(10).text_color(this.note ? t.blocked : t.dim).child(hint))
       .child(this.button(t, "nw-cancel", "Cancel", false, () => this.close()))
-      .child(this.button(t, "nw-open", "Open workspace", true, () => this.open(cx), this.writable && !this.loading));
+      .child(this.button(t, "nw-open", "Open workspace", true, () => this.open(), this.writable && !this.loading));
     return v_flex().id("new-workspace").size_full().bg(t.popover).text_size(12.5)
       .track_focus(this.handle)
       .on_key_down((event, cx) => this.keys(event, cx))
