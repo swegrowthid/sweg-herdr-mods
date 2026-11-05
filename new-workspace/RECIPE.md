@@ -21,7 +21,7 @@ A 620×450 dialog in the app's theme colors.
 - **Breadcrumbs** — click any shown segment to jump there.
 - **Places and recents** — click to jump. Recents merge the persisted `new-workspace.recents` list with the folders of the local spaces already open.
 - **Start folder** — the last folder opened here, else the active space's folder, else `~`. A missing last folder falls back to `~`.
-- **Open workspace** — stores the folder in `new-workspace.recents` and `new-workspace.last`, closes the dialog, and runs `space.new { folder }`. Herdr names the space from the folder and starts the default shell there.
+- **Open workspace** - stores the folder in `new-workspace.recents` and `new-workspace.last`, closes the dialog, and runs `space.new { folder, machine: "" }`. The empty machine forces this computer, because the folder list is local. Herdr names the space from the folder and starts the default shell there.
 - **Read-only folders** — the folder list asks the shell for entries it can write to. A folder without write permission is not listed. If the current folder itself is read-only, the list still shows its writable children, but `Open workspace` is disabled.
 
 ## Built from
@@ -31,14 +31,14 @@ A 620×450 dialog in the app's theme colors.
 - `herdr`: `exec`, `home`, `spaces`, `shared`, `setShared`, `theme`, `window`, `props`, `run`, `closeOverlay`.
 - `gpui-kit` / `gpui-base`: `View`, `div`, `svg`, `v_flex`, `h_flex`.
 - One `exec("/bin/sh", ["-c", LIST, "sh", folder])` per folder. The script prints `W` or `R` for the folder's own write access, then one NUL-terminated name per writable subfolder. Dot-folders never match `*/`.
-- Commands: `space.new { folder }`.
+- Commands: `space.new { folder, machine: "" }`.
 - Shared keys: `new-workspace.last`, `new-workspace.recents`.
 - Icons: `mods/files/folder.svg`, `mods/workspace-chrome/{monitor,file-text,archive,clock}.svg`.
 
 ## Watch out
 
 - **Local folders only.** The dialog runs `sh` on this machine. Remote spaces are not listed.
-- **The sidebar `+` is unchanged.** Herdr's shipped `spaces` mod calls `space.new` directly. Routing that button through this dialog means cloning `spaces` (438 lines) and changing one click handler; the key binding is the smaller entry point.
+- **The sidebar `+` is not changed here.** Herdr's shipped `spaces` mod calls `space.new` directly. Install [Spaces plus](../spaces-plus/) to point that `+` at this dialog; the key binding works without it.
 - **Merging `keys.json` replaces `⌘N`.** Back up `~/.config/herdr-app/keys.json` first. `⌘⇧N` is an extra binding, not a replacement.
 - **No name field.** The space takes Herdr's automatic name from the folder.
 - **No search field.** Folders are browsed, not typed. The path bar and Places cover the usual jumps.

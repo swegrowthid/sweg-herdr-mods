@@ -1,3 +1,4 @@
+// @ts-nocheck -- GPUI mod: theme() colors are typed as hex only, so the generated d.ts flags every theme pass. herdr-app check is the gate.
 // New workspace: pick a folder, and the new space's terminal starts there.
 //
 // The list is one `sh` call per folder. It drops dot-folders and folders the
@@ -97,7 +98,8 @@ export default class NewWorkspace extends View {
     setShared(RECENTS, list);
     setShared(LAST, folder);
     this.close();
-    run("space.new", { folder });
+    // The list is this computer's; do not inherit a remote active space.
+    run("space.new", { folder, machine: "" });
   }
 
   keys(event, cx) {
