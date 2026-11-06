@@ -8,7 +8,7 @@ Herdr's entire interface is built from plain files in `~/.config/herdr-app`. Lay
 
 This repository ships two mods: [new-workspace](new-workspace/) and [spaces-plus](spaces-plus/). Jump to [Install](#install) to use them.
 
-- Mods directory on herdr.dev: <https://herdr.dev/mods/>
+- Mods directory on herdr.dev: <https://herdr.dev/gallery/?type=mods>
 - Modding guide for agents: <https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md>
 - Herdr app source: <https://github.com/herdrdev/herdr-app>
 
@@ -340,7 +340,7 @@ herdr-app do mod.clone '{"name":"files","as":"my-files"}'
 
 ## Publishing a mod
 
-Herdr lists community mods at <https://herdr.dev/mods/>. Publishing takes three steps and no sign-up.
+Herdr lists community mods in the gallery at <https://herdr.dev/gallery/?type=mods>. Publishing takes three steps and no sign-up.
 
 ### 1. Write a `RECIPE.md`
 
@@ -381,7 +381,7 @@ my-mod/
 
 ### 3. Wait for it to appear
 
-Community mods show up on <https://herdr.dev/mods/> within the hour. Herdr does not review the code; preview images are screened.
+Community mods show up in the gallery at <https://herdr.dev/gallery/?type=mods> within the hour. Herdr does not review the code; preview images are screened.
 
 ---
 
@@ -416,6 +416,8 @@ sweg-herdr-mods/
 | --- | --- |
 | [new-workspace](new-workspace/) | A native folder dialog for new spaces. `Cmd+N`, or a `+` with spaces-plus. Pick a writable folder; the new space's terminal starts there. Back/forward history, Places, Recents, keyboard navigation. |
 | [spaces-plus](spaces-plus/) | The shipped Spaces sidebar with the local `+` wired to the New workspace dialog. Requires [new-workspace](new-workspace/) and a layout change. |
+
+After Herdr indexes this repository, each mod has a gallery page and a one-line install prompt: `herdr.dev/mods/swegrowthid/sweg-herdr-mods--new-workspace` and `herdr.dev/mods/swegrowthid/sweg-herdr-mods--spaces-plus`.
 
 ### Requirements
 
@@ -600,8 +602,8 @@ Herdr does not review community mods. Before installing one, read `RECIPE.md` an
 | Resource | Link |
 | --- | --- |
 | Herdr desktop app | <https://herdr.dev> |
-| Community mods | <https://herdr.dev/mods/> |
-| Layouts | <https://herdr.dev/layouts/> |
+| Community mods | <https://herdr.dev/gallery/?type=mods> |
+| Layouts | <https://herdr.dev/gallery/> |
 | Guide | <https://herdr.dev/guide/> |
 | Agent-facing guide (`AGENTS.md`) | <https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md> |
 | Herdr app source | <https://github.com/herdrdev/herdr-app> |
