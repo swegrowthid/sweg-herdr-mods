@@ -1,0 +1,6 @@
+{
+  "global": {
+    "cmd-n": "mod.open:new-workspace",
+    "cmd-shift-n": "mod.open:new-workspace"
+  }
+}
