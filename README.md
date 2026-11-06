@@ -6,6 +6,8 @@ Community mods and modding notes for the **Herdr desktop app** — the native ma
 
 Herdr's entire interface is built from plain files in `~/.config/herdr-app`. Layouts, keys, themes, panels and bars are all editable, and **mods** are the small JavaScript programs behind them. A mod can add a panel, a tab bar, an agent board, a status widget, a popup, a menu, or anything else the app can draw.
 
+This repository ships two mods: [new-workspace](new-workspace/) and [spaces-plus](spaces-plus/). Jump to [Install](#install) to use them.
+
 - Mods directory on herdr.dev: <https://herdr.dev/mods/>
 - Modding guide for agents: <https://github.com/herdrdev/herdr-app/blob/master/defaults/AGENTS.md>
 - Herdr app source: <https://github.com/herdrdev/herdr-app>
@@ -385,21 +387,185 @@ Community mods show up on <https://herdr.dev/mods/> within the hour. Herdr does 
 
 ## This repository
 
-This repository follows the same publishing layout: **one top-level folder per mod**.
+This repository follows the same publishing layout: **one top-level folder per mod**. It ships two mods that work together.
 
 ```text
-herdr-mods/
+sweg-herdr-mods/
 ├── README.md
-└── <mod-name>/
+├── new-workspace/
+│   ├── RECIPE.md
+│   ├── preview.png
+│   ├── keys.json              # Cmd+N and Cmd+Shift+N
+│   └── mods/new-workspace/
+│       ├── main.js            # the dialog
+│       ├── logic.js           # pure path, listing and history helpers
+│       ├── logic.test.js      # node --test, no app needed
+│       ├── mod.json           # place none, dialog overlay 620x450
+│       └── package.json       # type: module, for the test run
+└── spaces-plus/
     ├── RECIPE.md
     ├── preview.png
-    ├── keys.json          # optional
-    └── mods/
-        └── <mod-name>/
-            ├── main.js
-            ├── mod.json
-            └── ...
+    └── mods/spaces-plus/
+        ├── main.js            # fork of the shipped spaces mod
+        └── mod.json           # cloned_from spaces 0.1.13
 ```
+
+### Mods in this repository
+
+| Mod | What it does |
+| --- | --- |
+| [new-workspace](new-workspace/) | A native folder dialog for new spaces. `Cmd+N`, or a `+` with spaces-plus. Pick a writable folder; the new space's terminal starts there. Back/forward history, Places, Recents, keyboard navigation. |
+| [spaces-plus](spaces-plus/) | The shipped Spaces sidebar with the local `+` wired to the New workspace dialog. Requires [new-workspace](new-workspace/) and a layout change. |
+
+### Requirements
+
+- Herdr desktop app 0.1.13 or newer (`herdr-app --version`). Both mods were checked with app 0.1.13 and herdr-core 0.1.18.
+- Herdr's shipped `files` and `workspace-chrome` mods. `new-workspace` reads their icons: `mods/files/folder.svg` and `mods/workspace-chrome/{monitor,file-text,archive,clock,chevron-left,chevron-right}.svg`.
+- `spaces-plus` also needs `new-workspace`. It opens that mod's dialog.
+
+### Install
+
+Ask your agent:
+
+```text
+Read ~/.config/herdr-app/AGENTS.md, then install both mods from https://github.com/swegrowthid/sweg-herdr-mods: new-workspace and spaces-plus. Merge the new-workspace keys.json snippet, point the spaces block of my layout at spaces-plus, and run herdr-app check on both.
+```
+
+Or do it by hand.
+
+#### 1. Install new-workspace
+
+```sh
+git clone https://github.com/swegrowthid/sweg-herdr-mods.git
+cp -R sweg-herdr-mods/new-workspace/mods/new-workspace ~/.config/herdr-app/mods/
+herdr-app check ~/.config/herdr-app/mods/new-workspace
+```
+
+A passing check prints `check passed: ...`.
+
+Merge `new-workspace/keys.json` into `~/.config/herdr-app/keys.json`:
+
+```json
+{
+  "global": {
+    "cmd-n": "mod.open:new-workspace",
+    "cmd-shift-n": "mod.open:new-workspace"
+  }
+}
+```
+
+- Back up `keys.json` first: `cp ~/.config/herdr-app/keys.json ~/.config/herdr-app/keys.json.bak`.
+- On Linux and Windows use `ctrl-n` and `ctrl-shift-n`.
+- This **replaces** the key that made an empty space in the home folder. Keep the old command under another key if you still want it.
+
+Files apply live. Press `Cmd+N` to open the dialog. To open it from a shell:
+
+```sh
+herdr-app do mod.open '{"name":"new-workspace"}'
+```
+
+If it does not open, run `herdr-app status` and read `errors` and `keys.error`.
+
+#### 2. Install spaces-plus
+
+```sh
+cp -R sweg-herdr-mods/spaces-plus/mods/spaces-plus ~/.config/herdr-app/mods/
+herdr-app check ~/.config/herdr-app/mods/spaces-plus
+```
+
+Point your layout's sidebar block at the fork. The block id is `spaces`:
+
+```json
+{ "id": "spaces", "type": "block", "content": { "mod": "spaces-plus" } }
+```
+
+- If you already have your own layout file in `layouts/`, edit that file.
+- If you use the shipped `main` layout, clone it first and edit the clone:
+
+  ```sh
+  herdr-app do layout.clone '{"name":"main","as":"my-spaces"}'
+  ```
+
+  Then set `content.mod` to `spaces-plus` in `layouts/my-spaces.json`. Do not edit `layouts/main.json`: Herdr replaces a shipped layout on the next start and keeps your copy as `main-edited`.
+- Keep `"id": "spaces"`. Saved layout state and keys use that id.
+- `spaces-plus` ships no `keys.json`. The `new-workspace` snippet covers the keys.
+- A `+` on a remote machine still runs `space.new { machine }`. The dialog lists local folders only.
+- This is a fork of the 0.1.13 sidebar. A newer app does not change it. Re-clone and re-apply the small change when the sidebar changes.
+
+The clone is shown at once. If you edited your own layout, switch layouts with `ctrl-shift-l` or reopen the window. The header `+`, the local machine `+` and `New space there` now open the dialog.
+
+### Use the dialog
+
+Open it with `Cmd+N`, `Cmd+Shift+N`, or a `+` in the Spaces sidebar. On Linux and Windows, use `Ctrl` instead of `Cmd`.
+
+| Do this | Result |
+| --- | --- |
+| Click a folder | Enter it. |
+| `↑` / `↓` | Move the highlight. |
+| `Enter` | Enter the highlighted folder. |
+| `Cmd+Enter` | Open the current folder as a new space. |
+| `Backspace` or `Cmd+↑` | Go to the parent folder. |
+| `Cmd+[` / `Cmd+]` | Go back or forward in history. |
+| Click a breadcrumb | Jump to that folder. |
+| Click Home, Desktop, Documents or Downloads | Jump to that folder. |
+| Click a Recent entry | Jump to that folder. |
+| `Esc` or `Cancel` | Close and make no space. |
+| `Open workspace` | Make the space and close. |
+
+Rules:
+
+- **Writable folders only.** The dialog runs `sh` and keeps folders that pass `test -w`. Hidden folders (dot-folders) stay out. If the current folder is read-only, its writable children still show, but `Open workspace` is disabled.
+- **Start folder.** The last folder opened here, else the active local space's folder, else `~`. A missing last folder falls back to `~`.
+- **Recents.** The last five folders opened here, plus the folders of the local spaces already open.
+- **History.** Like a browser: a new jump drops the forward tail.
+- **New space.** `space.new { folder, machine: "" }`. The empty machine forces this computer. Herdr names the space after the folder and starts the default shell there.
+- **Local only.** The dialog runs `sh` on this computer. It does not use the network and does not write outside Herdr's shared state (`new-workspace.last`, `new-workspace.recents`).
+- **No name field and no search.** Herdr names the space. Browse with the path bar and Places.
+
+### Verify the install
+
+```sh
+herdr-app status                  # "errors": []
+herdr-app shot /tmp/herdr.png     # the last frame, to see the dialog
+herdr-app ls                      # after Open workspace: the new space
+```
+
+Check these:
+
+- At `/` only writable folders such as `Applications` and `tmp` show. `System`, `Library` and `usr` stay out, and `Open workspace` is disabled.
+- `Open workspace` makes a space named after the folder.
+- `Esc` and `Cancel` close without making a space.
+
+### Troubleshoot
+
+| Symptom | Check |
+| --- | --- |
+| `Cmd+N` does nothing | `keys.json` has the snippet, the mod folder is in `mods/`, and `herdr-app status` shows no `keys.error`. |
+| The dialog opens but has no icons | The shipped `files` and `workspace-chrome` mods are present in `~/.config/herdr-app/mods/`. |
+| A `+` in the sidebar does nothing | `spaces-plus` is installed and the layout block `content.mod` is `spaces-plus`; `new-workspace` is installed too. |
+| A save broke the mod | Herdr keeps the last good version and writes the reason to `<name>.error`. |
+| The window is broken | `ctrl-alt-shift-escape` returns to the default `main` layout. |
+
+### Uninstall
+
+- `new-workspace`: delete `~/.config/herdr-app/mods/new-workspace`, then restore `cmd-n` and `cmd-shift-n` in `keys.json` from the backup. The shipped `cmd-n` is `space.new`.
+- `spaces-plus`: set the layout block back to `"mod": "spaces"`, or switch back to your old layout, then delete `~/.config/herdr-app/mods/spaces-plus`.
+- Neither mod adds a layout file or writes outside Herdr's shared state.
+
+### Develop and test
+
+```sh
+herdr-app check new-workspace/mods/new-workspace
+herdr-app check spaces-plus/mods/spaces-plus
+
+cd new-workspace/mods/new-workspace
+node --test logic.test.js
+```
+
+- `logic.js` is pure: no Herdr, no GPUI, no I/O. Its tests run in Node with no app open. 11 tests cover paths, crumbs, the listing parser, recents and navigation history.
+- `main.js` renders with `theme()` colors. `@ts-nocheck` is intentional: the generated `gpui-kit.d.ts` types theme colors as hex only. `herdr-app check` is the gate, not `tsc`.
+- `herdr-app check` writes `jsconfig.json` and `gpui-kit.d.ts` into the checked folder when they are missing. This repository ignores both.
+- After a change, save the file. Herdr reloads the mod in place.
 
 ### Adding a mod here
 
@@ -412,13 +578,6 @@ herdr-mods/
 - [ ] Any `keys.json` is a mergeable snippet, not a full replacement.
 - [ ] No `layouts/` folder, no secrets, no machine-specific paths.
 - [ ] The README for the mod says if it runs programs, uses the network or reads files outside its folder.
-
-### Mods in this repository
-
-| Mod | What it does |
-| --- | --- |
-| [new-workspace](new-workspace/) | A native folder dialog for new spaces. Pick a folder; the new space's terminal starts there. |
-| [spaces-plus](spaces-plus/) | The Spaces sidebar with the local `+` buttons wired to the New workspace dialog. Requires [new-workspace](new-workspace/). |
 
 ---
 
