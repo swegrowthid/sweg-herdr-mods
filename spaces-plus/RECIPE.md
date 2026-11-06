@@ -18,7 +18,7 @@ All three open the [New workspace](../new-workspace/) dialog: 620x450, the Place
 
 - Click the header `+`: the dialog opens at the last picked folder, else the active space's folder, else `~`.
 - Click the local machine `+` or `New space there`: the same dialog opens.
-- Pick a folder. Click `Open workspace`, or press `Cmd+Enter`. The dialog stores the folder in `new-workspace.recents` and `new-workspace.last`, closes, and runs `space.new { folder }`. Herdr names the new space after the folder and starts its shell there.
+- Pick a folder. Click `Open workspace`, or press `Cmd+Enter`. The dialog stores the folder in `new-workspace.recents` and `new-workspace.last`, closes, and runs `space.new { folder, machine: "" }`. The empty machine forces this computer. Herdr names the new space after the folder and starts its shell there.
 - Press `Esc`, click `Cancel`, or click beside the dialog: no space is made.
 - A `+` on a remote machine still runs `space.new { machine }` directly. The folder list covers this computer only.
 

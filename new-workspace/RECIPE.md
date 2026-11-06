@@ -8,7 +8,7 @@ A native folder dialog for new spaces. Pick a folder, press **Open workspace**, 
 
 A 620×450 dialog in the app's theme colors.
 
-- **Header** — `New workspace` in 13.5 px semibold, with the line `Pick a folder. The new space's terminal starts there.` in 10.5 px muted. An `Esc` keycap sits at the right.
+- **Header** — `New workspace` in 13.5 px semibold, with the line `Pick a folder. The new space's terminal starts there.` in 10.5 px muted. Back and forward buttons sit at the right, then an `Esc` keycap.
 - **Path bar** — a 26 px up button and clickable breadcrumbs. Home shows `~`; a deep path keeps the last three folders. At the filesystem root the crumbs read `/ tmp / name`, not `//tmp/name`.
 - **Places sidebar** — 152 px wide, `chrome` background. `PLACES` lists Home, Desktop, Documents and Downloads. `RECENT` lists the last five folders, newest first. A footnote says `Hidden and read-only folders stay out.`
 - **Folder list** — 30 px rows with a 14 px folder icon and a 12.5 px name. The highlighted row uses `selected`; hover uses `hover`. A 3 px scrollbar appears only when the list overflows.
@@ -18,6 +18,7 @@ A 620×450 dialog in the app's theme colors.
 
 - **Open** — `⌘N` or `⌘⇧N` (the shipped `keys.json` snippet maps both to `mod.open:new-workspace`).
 - **Navigate** — click a folder to enter it. `↑` / `↓` move the highlight, `Enter` enters the highlighted folder, `Backspace` or `⌘↑` goes to the parent, `⌘Enter` opens the current folder. `Esc` closes.
+- **History** — `⌘[` goes back and `⌘]` goes forward, like a browser. A new jump drops the forward tail. The header buttons do the same and dim when there is nowhere to go. The trail lives for one open dialog.
 - **Breadcrumbs** — click any shown segment to jump there.
 - **Places and recents** — click to jump. Recents merge the persisted `new-workspace.recents` list with the folders of the local spaces already open.
 - **Start folder** — the last folder opened here, else the active space's folder, else `~`. A missing last folder falls back to `~`.
@@ -27,13 +28,13 @@ A 620×450 dialog in the app's theme colors.
 ## Built from
 
 - One mod folder, `mods/new-workspace/`, with `place: "none"` and a `dialog` overlay of 620×450. No layout file.
-- `logic.js`: pure decisions (`normalize`, `parentOf`, `nameOf`, `crumbs`, `places`, `recents`, `remember`, `parseListing`). It imports neither Herdr nor GPUI, so `logic.test.js` runs with Node alone.
+- `logic.js`: pure decisions (`normalize`, `parentOf`, `nameOf`, `crumbs`, `places`, `recents`, `remember`, `parseListing`, `recordNav`, `canBack`, `canForward`, `goBack`, `goForward`). It imports neither Herdr nor GPUI, so `logic.test.js` runs with Node alone.
 - `herdr`: `exec`, `home`, `spaces`, `shared`, `setShared`, `theme`, `window`, `props`, `run`, `closeOverlay`.
 - `gpui-kit` / `gpui-base`: `View`, `div`, `svg`, `v_flex`, `h_flex`.
 - One `exec("/bin/sh", ["-c", LIST, "sh", folder])` per folder. The script prints `W` or `R` for the folder's own write access, then one NUL-terminated name per writable subfolder. Dot-folders never match `*/`.
 - Commands: `space.new { folder, machine: "" }`.
 - Shared keys: `new-workspace.last`, `new-workspace.recents`.
-- Icons: `mods/files/folder.svg`, `mods/workspace-chrome/{monitor,file-text,archive,clock}.svg`.
+- Icons: `mods/files/folder.svg`, `mods/workspace-chrome/{monitor,file-text,archive,clock,chevron-left,chevron-right}.svg`.
 
 ## Watch out
 
@@ -56,5 +57,6 @@ cd new-workspace/mods/new-workspace && node --test logic.test.js
 
 - The dialog opens on `⌘N`.
 - At `/`, only writable folders such as `Applications` and `tmp` are listed; `System`, `Library` and `usr` are absent.
+- Enter two folders, press `⌘[` twice, then `⌘]`: the dialog shows the first folder, then the second.
 - `Open workspace` creates a space named after the folder and `hc ls --json` shows its terminal's `cwd` in that folder.
 - `Esc` and `Cancel` close without making a space.
