@@ -9,7 +9,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { closeOverlay, exec, home, props, run, setShared, settings, shared, spaces, theme, window } from "herdr";
-import { crumbs, nameOf, normalize, parentOf, parseListing, places, recents, remember } from "./logic.js";
+import { crumbs, nameOf, normalize, parentOf, parseListing, places, recents, remember, recordNav, canBack, canForward, goBack, goForward } from "./logic.js";
 
 const LAST = "new-workspace.last";
 const RECENTS = "new-workspace.recents";
@@ -44,6 +44,7 @@ export default class NewWorkspace extends View {
     const here = spaces().find((s) => s.active && !s.machine)?.folder;
     const start = normalize(shared(LAST) || here || home(), home());
     this.cwd = start;
+    this.state = { list: [], hi: -1 };
     this.load(start, cx, start !== home());
   }
 
@@ -57,7 +58,7 @@ export default class NewWorkspace extends View {
   // runs on the caller's live cx; the part after `await` runs on spawn's
   // AsyncContext. Handing a render's cx to a click handler throws
   // stale-context and the click silently does nothing.
-  load(path, cx, retry = false) {
+  load(path, cx, retry = false, next = null) {
     const seq = ++this.seq;
     this.loading = true;
     this.note = null;
@@ -71,7 +72,7 @@ export default class NewWorkspace extends View {
       }
       if (!this.alive || seq !== this.seq) return;
       if (result.code !== 0) {
-        if (retry) return this.load(home(), cx);
+        if (retry) return this.load(home(), cx, false, next);
         this.loading = false;
         this.note = "Cannot open that folder.";
         cx.notify();
@@ -81,6 +82,7 @@ export default class NewWorkspace extends View {
       this.writable = listing.writable;
       this.entries = listing.entries;
       this.cwd = path;
+      this.state = next ?? recordNav(this.state, path);
       this.at = 0;
       this.loading = false;
       this.scroll = 0;
@@ -96,6 +98,18 @@ export default class NewWorkspace extends View {
   up(cx) {
     const parent = parentOf(this.cwd);
     if (parent) this.load(parent, cx);
+  }
+
+  back(cx) {
+    const next = goBack(this.state);
+    if (!next) return;
+    this.load(this.state.list[next.hi], cx, false, next);
+  }
+
+  forward(cx) {
+    const next = goForward(this.state);
+    if (!next) return;
+    this.load(this.state.list[next.hi], cx, false, next);
   }
 
   open() {
@@ -125,6 +139,10 @@ export default class NewWorkspace extends View {
       }
     } else if (key === "backspace") {
       this.up(cx);
+    } else if (key === "[" && mod) {
+      this.back(cx);
+    } else if (key === "]" && mod) {
+      this.forward(cx);
     } else if (key === "enter") {
       if (mod || !this.entries[this.at]) this.open();
       else this.enter(this.entries[this.at], cx);
@@ -139,6 +157,16 @@ export default class NewWorkspace extends View {
     return div().h(20).px(6).flex().items_center().justify_center().rounded(5)
       .border(1).border_color(t.border).bg(t.raised)
       .text_size(9.5).text_color(t.dim).child(label);
+  }
+
+  navButton(t, id, icon, enabled, label, onclick) {
+    const base = h_flex().id(id).size(26).flex_none().items_center().justify_center().rounded(6);
+    const iconEl = svg(icon).size(13).flex_none().text_color(enabled ? t.muted : t.dim);
+    if (!enabled) return base.tooltip(label).child(iconEl);
+    return base.cursor_pointer().tooltip(label)
+      .hover((s) => s.bg(t.hover))
+      .on_click(onclick)
+      .child(iconEl);
   }
 
   section(t, label) {
@@ -246,7 +274,10 @@ export default class NewWorkspace extends View {
       .child(v_flex().flex_1().gap(2)
         .child(div().text_size(13.5).font_semibold().text_color(t.foreground).child("New workspace"))
         .child(div().text_size(10.5).text_color(t.dim).child("Pick a folder. The new space's terminal starts there.")))
-      .child(this.keycap(t, "Esc"));
+      .child(h_flex().items_center().gap(4)
+        .child(this.navButton(t, "nw-back", "mods/workspace-chrome/chevron-left.svg", canBack(this.state), "Back (⌘[)", (_e, cx) => this.back(cx)))
+        .child(this.navButton(t, "nw-forward", "mods/workspace-chrome/chevron-right.svg", canForward(this.state), "Forward (⌘])", (_e, cx) => this.forward(cx)))
+        .child(this.keycap(t, "Esc")));
     const toolbar = h_flex().h(38).flex_none().px(8).gap(2).items_center().border_b(1).border_color(t.border)
       .child(h_flex().id("nw-up").size(26).flex_none().items_center().justify_center().rounded(6)
         .text_size(13).text_color(t.muted).cursor_pointer()

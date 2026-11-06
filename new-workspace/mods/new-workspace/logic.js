@@ -93,3 +93,28 @@ export function parseListing(stdout) {
     entries: parts.slice(1).filter(Boolean).sort((a, b) => a.localeCompare(b)),
   };
 }
+
+// Navigation history: one list, one index. `hi` is the folder on screen.
+// recordNav drops the forward tail on a new jump, like a browser does.
+export function recordNav(state, path) {
+  if (state.list[state.hi] === path) return state;
+  const list = state.list.slice(0, state.hi + 1);
+  list.push(path);
+  return { list, hi: list.length - 1 };
+}
+
+export function canBack(state) {
+  return state.hi > 0;
+}
+
+export function canForward(state) {
+  return state.hi < state.list.length - 1;
+}
+
+export function goBack(state) {
+  return canBack(state) ? { list: state.list, hi: state.hi - 1 } : null;
+}
+
+export function goForward(state) {
+  return canForward(state) ? { list: state.list, hi: state.hi + 1 } : null;
+}
